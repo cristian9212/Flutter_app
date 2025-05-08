@@ -1,64 +1,142 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:video_player/video_player.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(MaterialApp(
+    title: 'Sports Streaming',
+    theme: ThemeData.dark(),
+    home: StreamMenuPage(),
+  ));
 }
 
-class MyApp extends StatelessWidget {
-  final String apiKey = 'TU_API_KEY';
-  final String channelId = 'UC4R8DWoMoI7CAwX8_LjQHig';
-
-  const MyApp({super.key}); 
-
-  Future<String?> fetchLiveVideoId() async {
-  final url =
-      'https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=$channelId&eventType=live&type=video&key=$apiKey';
-
-  final response = await http.get(Uri.parse(url));
-
-  print('STATUS CODE: ${response.statusCode}');
-  print('RESPONSE BODY: ${response.body}'); 
-
-  if (response.statusCode == 200) {
-    final data = json.decode(response.body);
-    if (data['items'].isNotEmpty) {
-      return data['items'][0]['id']['videoId'];
-    }
-  }
-  return null;
-}
-
+// -----------------------
+// Página principal (menú)
+// -----------------------
+class StreamMenuPage extends StatelessWidget {
+  final List<Map<String, String>> streams = [
+    {
+      'title': 'ESPN Premium',
+      'url': 'https://m2.merichunidya.com:999/hls/capespnprem.m3u8?md5=bdW_qvbWrywibbKXLCCAmA&expires=1746659495',
+    },
+    {
+      'title': 'Win Sports+',
+      'url': 'https://m1.merichunidya.com:999/hls/winsportsplus.m3u8?md5=mTiRAnOxwm3AI7y7Su8pvQ&expires=1746658184',
+    },
+    {
+      'title': 'TNT Argentina',
+      'url': 'https://m3.merichunidya.com:999/hls/captntarg.m3u8?md5=SDm5ZTfZvahfJ63lLnhzPg&expires=1746659610',
+    },
+    {
+      'title': 'Gol Perú',
+      'url': 'https://m1.merichunidya.com:999/hls/capgolperu.m3u8?md5=d5njHJebNPBwIH-ugZRTxg&expires=1746659670',
+    },
+    {
+  'title': 'Fox Sports',
+  'url': 'https://m4.merichunidya.com:999/hls/foxsports.m3u8?md5=abc123&expires=1746660000',
+    },
+    {
+      'title': 'Big Buck Bunny',
+      'url': 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', // MP4 de prueba
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'YouTube Live Viewer',
-      home: Scaffold(
-        appBar: AppBar(title: Text('Live Stream')),
-        body: FutureBuilder<String?>(
-          future: fetchLiveVideoId(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
-            }
-            if (!snapshot.hasData || snapshot.data == null) {
-              return Center(child: Text('No hay transmisiones en vivo.'));
-            }
+    return Scaffold(
+      appBar: AppBar(title: Text('Sports Streaming')),
+      body: ListView.builder(
+        padding: EdgeInsets.all(16),
+        itemCount: streams.length,
+        itemBuilder: (context, index) {
+          final stream = streams[index];
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(vertical: 20),
+              ),
+              child: Text(stream['title']!, style: TextStyle(fontSize: 18)),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => VideoPage(
+                      title: stream['title']!,
+                      videoUrl: stream['url']!,
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
 
-            YoutubePlayerController controller = YoutubePlayerController(
-              initialVideoId: snapshot.data!,
-              flags: YoutubePlayerFlags(autoPlay: true, mute: false),
-            );
+// -----------------------
+// Página del reproductor
+// -----------------------
+class VideoPage extends StatefulWidget {
+  final String title;
+  final String videoUrl;
 
-            return YoutubePlayer(
-              controller: controller,
-              showVideoProgressIndicator: true,
-            );
-          },
-        ),
+  VideoPage({required this.title, required this.videoUrl});
+
+  @override
+  _VideoPageState createState() => _VideoPageState();
+}
+
+class _VideoPageState extends State<VideoPage> {
+  late VideoPlayerController _controller;
+
+  final Map<String, String> customHeaders = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.5672.126 Safari/537.36',
+  'Accept': '*/*',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Referer': 'https://capo5play.com/',
+};
+
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = VideoPlayerController.networkUrl(
+      Uri.parse(widget.videoUrl),
+      httpHeaders: customHeaders,
+    )
+      ..initialize().then((_) {
+        setState(() {});
+        _controller.play();
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.title)),
+      body: Center(
+        child: _controller.value.isInitialized
+            ? AspectRatio(
+                aspectRatio: _controller.value.aspectRatio,
+                child: VideoPlayer(_controller),
+              )
+            : CircularProgressIndicator(),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          setState(() {
+            _controller.value.isPlaying ? _controller.pause() : _controller.play();
+          });
+        },
+        child: Icon(_controller.value.isPlaying ? Icons.pause : Icons.play_arrow),
       ),
     );
   }
