@@ -16,7 +16,7 @@ class StreamMenuPage extends StatelessWidget {
   final List<Map<String, String>> streams = [
     {
       'title': 'ESPN Premium',
-      'url': 'https://m2.merichunidya.com:999/hls/capespnprem.m3u8?md5=bdW_qvbWrywibbKXLCCAmA&expires=1746659495',
+      'url': 'https://8852.crackstreamslivehd.com/espn/index.m3u8?token=da157f12843ff01daeafc13e83e432da0c6a2fb3-1a-1747289614-1747257214&ip=191.156.233.21',
     },
     {
       'title': 'Win Sports+',
